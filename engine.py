@@ -4,6 +4,29 @@ from piece import *
 import time
 import colorama
 colorama.init()
+import random
+
+class TranspositionEntry:
+    def __init__(self, key, score, depth):
+        self.key = key  # Clé de hachage pour identifier l'état du plateau
+        self.score = score  # Score évalué pour cette entrée
+        self.depth = depth
+
+class TranspositionTable:
+    def __init__(self, size=2**10):  # Taille par défaut de la table de transposition
+        self.size = size
+        self.table = [None] * size
+
+    def store(self, entry):
+        index = entry.key % self.size
+        self.table[index] = entry
+
+    def probe(self, key):
+        index = key % self.size
+        entry = self.table[index]
+        if entry and entry.key == key:
+            return entry
+        return None
 
 class Engine:
     """Code du moteur d'échecs"""
@@ -18,6 +41,7 @@ class Engine:
         self.stop_search = False 
         self.clear_pv()
         self.fen_table = []
+        self.transposition_table = TranspositionTable()
         
     def chkCmd(self,c):
         """Check if the command 'c' typed by user is like a move,
@@ -94,7 +118,13 @@ class Engine:
             self.usermove(self,b,c)
             
 
-    def search(self, b):
+    def search(self, b, human_turn):
+        book = None
+        with open("openingbook.txt", "r") as file:
+            opening_lines = file.readlines()
+    
+        random.shuffle(opening_lines)
+        
         if self.endgame:
             self.print_result(b)
             return
@@ -102,97 +132,125 @@ class Engine:
         self.clear_pv()
         self.nodes = 0
         b.ply = 0
+        
+        if len(b.showHistory(False)) < 80:
+            print("Looking at the opening file...")
+            for line in opening_lines:
+                if str(line.strip()).startswith(b.showHistory(False)):
+                    if human_turn == False:
+                        if len(b.showHistory(False).split(" ")) == 1:
+                            next_move = line.strip().split(" ")[len(b.showHistory(False).split(" "))-1]
+                            b.domove(b.caseStr2Int(next_move[0:2]), b.caseStr2Int(next_move[2:4]), "")  # Jouer le prochain coup dans la ligne du livre d'ouverture
+                            b.render(0, 0, 0, "Livre d'ouverture")
+                            book = True
+                        else:
+                            next_move = line.strip().split(" ")[len(b.showHistory(False).split(" "))]
+                            b.domove(b.caseStr2Int(next_move[0:2]), b.caseStr2Int(next_move[2:4]), "")  # Jouer le prochain coup dans la ligne du livre d'ouverture
+                            b.render(0, 0, 0, "Livre d'ouverture")
+                            book =  True
+                    else:
+                        if len(b.showHistory(False).split(" ")) == 1:
+                            next_move = line.strip().split(" ")[len(b.showHistory(False).split(" "))]
+                            b.domove(b.caseStr2Int(next_move[0:2]), b.caseStr2Int(next_move[2:4]), "")  # Jouer le prochain coup dans la ligne du livre d'ouverture
+                            b.render(0, 0, 0, "Livre d'ouverture")
+                            book = True
+                        else:
+                            next_move = line.strip().split(" ")[len(b.showHistory(False).split(" "))]
+                            b.domove(b.caseStr2Int(next_move[0:2]), b.caseStr2Int(next_move[2:4]), "")  # Jouer le prochain coup dans la ligne du livre d'ouverture
+                            b.render(0, 0, 0, "Livre d'ouverture")
+                            book = True
+                    return None
+        if not book == True:
+            print("ply\ttime\tnodes\tkn/s\tscore\tpv")
 
-        print("ply\ttime\tnodes\tkn/s\tscore\tpv")
-
-        start = time.time()
-        for i in range(1, self.init_depth + 1):
-            if b.material_everyone() < 20:
-                mode = "Mode finale activé; profondeur accrue"
-                score = self.alphabeta(i, -100, 100, b)
-            else:
-                mode = "Mode standard"
-                score = self.alphabeta(i, -100, 100, b)
-            end = time.time()
-            if b.side2move == 'blanc':
-                if score >= 0:
-                    score_text = colorama.Fore.GREEN + "+" + str(round(score, 2)) + colorama.Fore.WHITE
+            start = time.time()
+            for i in range(1, self.init_depth + 1):
+                if b.material_everyone() < 20:
+                    mode = "Mode finale activé"
+                    score = self.alphabeta(i, -100, 100, b)
                 else:
-                    score_text = colorama.Fore.RED + str(round(score, 2)) + colorama.Fore.WHITE
-                print("{}\t{}\t{}\t{}\t{}\t".format(i, round(end - start, 3), self.nodes, round((self.nodes * (1 / round(end - start + 0.001, 3)) / 1000), 2), score_text), end='')
-            elif b.side2move == 'noir':
-                if score >= 0:
-                    score_text = colorama.Fore.GREEN + str(round(-score, 2)) + colorama.Fore.WHITE
-                else:
-                    score_text = colorama.Fore.RED + "+" + str(round(-score, 2)) + colorama.Fore.WHITE
-                print("{}\t{}\t{}\t{}\t{}\t".format(i, round(end - start, 3), self.nodes, round((self.nodes * (1 / round(end - start + 0.001, 3)) / 1000), 2), score_text), end='')
-            if score > 100 or score < -100 or score == 0:
-                break
+                    mode = "Mode standard"
+                    score = self.alphabeta(i, -100, 100, b)
+                end = time.time()
+                if b.side2move == 'blanc':
+                    if score >= 0:
+                        score_text = colorama.Fore.GREEN + "+" + str(round(score, 2)) + colorama.Fore.WHITE
+                    else:
+                        score_text = colorama.Fore.RED + str(round(score, 2)) + colorama.Fore.WHITE
+                    print("{}\t{}\t{}\t{}\t{}\t".format(i, round(end - start, 3), self.nodes, round((self.nodes * (1 / round(end - start + 0.001, 3)) / 1000), 2), score_text), end='')
+                elif b.side2move == 'noir':
+                    if score >= 0:
+                        score_text = colorama.Fore.GREEN + str(round(-score, 2)) + colorama.Fore.WHITE
+                    else:
+                        score_text = colorama.Fore.RED + "+" + str(round(-score, 2)) + colorama.Fore.WHITE
+                    print("{}\t{}\t{}\t{}\t{}\t".format(i, round(end - start, 3), self.nodes, round((self.nodes * (1 / round(end - start + 0.001, 3)) / 1000), 2), score_text), end='')
+                if score > 100 or score < -100 or score == 0:
+                    break
 
-            j = 0
-            while self.pv[j][j] != 0:
-                c = self.pv[j][j]
-                pos1 = b.caseInt2Str(c[0])
-                pos2 = b.caseInt2Str(c[1])
-                print("{}{}{}".format(pos1, pos2, c[2]), end=' ')
-                j += 1
-            print()
+                j = 0
+                while self.pv[j][j] != 0:
+                    c = self.pv[j][j]
+                    pos1 = b.caseInt2Str(c[0])
+                    pos2 = b.caseInt2Str(c[1])
+                    print("{}{}{}".format(pos1, pos2, c[2]), end=' ')
+                    j += 1
+                print()
 
-        best = self.pv[0][0]
-        b.domove(best[0], best[1], best[2])
-        self.fen_table.append(b.getboard())
-        b.render(score, self.nodes, end - start, mode)
+            time.sleep(0.1)
+            best = self.pv[0][0]
+            b.domove(best[0], best[1], best[2])
+            b.render(score, self.nodes, end - start, mode)
 
-    def alphabeta(self,depth,alpha,beta,b):
-        if(depth==0):
+    def alphabeta(self, depth, alpha, beta, b):
+        # Vérifier s'il y a une entrée dans la table de transposition
+        if self.transposition_table.probe(b.getboard_hash()) and self.transposition_table.probe(b.getboard_hash()).depth >= depth:
+            return self.transposition_table.probe(b.getboard_hash()).score
+
+        if depth == 0:
             return b.evaluer()
 
-        self.nodes+=1
+        self.nodes += 1
         self.pv_length[b.ply] = b.ply
 
-        # Do not go too deep
-        if(b.ply >= self.MAX_PLY-1):
+        # Ne pas aller trop profondément
+        if b.ply >= self.MAX_PLY - 1:
             return b.evaluer()
 
-        mList=b.gen_moves_list()
+        mList = b.gen_moves_list()
 
-        f=False # flag to know if at least one move will be done
-        for i,m in enumerate(mList):
-            if(not b.domove(m[0],m[1],m[2])):
+        f = False  # drapeau pour savoir si au moins un coup sera effectué
+        for move in mList:
+            if not b.domove(move[0], move[1], move[2]):
                 continue
-                
-            f=True # a move has passed
-            score=-self.alphabeta(depth-1,-beta,-alpha,b)
-            
-            if self.fen_table.count(b.getboard()) >= 2:
-                f = False
-                if b.side2move == 'blanc':
-                    return -3
-                else:
-                    return +3
 
-            # Unmake move
+            f = True  # un coup a été effectué
+            score = -self.alphabeta(depth - 1, -beta, -alpha, b)
+
+            # Annuler le coup
             b.undomove()
 
-            if(score>alpha):
-                if(score>=beta):
+            if score > alpha:
+                if score >= beta:
                     return beta
                 alpha = score
 
-                # Updating the triangular PV-Table
-                self.pv[b.ply][b.ply] = m
+                # Mettre à jour la table de PV triangulaire
+                self.pv[b.ply][b.ply] = move
                 j = b.ply + 1
-                while(j<self.pv_length[b.ply+1]):
-                    self.pv[b.ply][j] = self.pv[b.ply+1][j]
+                while j < self.pv_length[b.ply + 1]:
+                    self.pv[b.ply][j] = self.pv[b.ply + 1][j]
                     self.pv_length[b.ply] = self.pv_length[b.ply + 1]
-                    j+=1
+                    j += 1
 
-        if(not f):
-            chk = chk = b.in_check(b.side2move)
-            if(chk):
-                return -self.INFINITY + b.ply # MAT
+        if not f:
+            chk = b.in_check(b.side2move)
+            if chk:
+                return -self.INFINITY + b.ply  # MAT
             else:
-                return 0 # DRAW
+                return 0  # DRAW
+
+        # Stocker le résultat dans la table de transposition
+        self.transposition_table.store(TranspositionEntry(b.getboard_hash(), score, depth))
 
         return alpha
 

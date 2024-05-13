@@ -202,10 +202,11 @@ class Board:
             
         # b or w (black,white)
         if(self.side2move=='blanc'):
-            s+=' w '
+            s+=' w'
         else:
-            s+=' b '
+            s+=' b'
             
+        '''
         # Castle rights (KQkq)
         no_castle_right=True
         if(self.white_can_castle_63):
@@ -222,7 +223,7 @@ class Board:
             no_castle_right=False
         if(no_castle_right):
             s+='-'
-        '''
+        
         # prise en passant e3
         if(self.ep!=-1):
             s+=' '+self.coord[self.ep]
@@ -663,11 +664,10 @@ class Board:
 
     ####################################################################
     
-    def showHistory(self):
+    def showHistory(self, print_log):
         
         "Displays the history of the moves played"
         
-        print()
         pgn = ""
         for (start_square, end_square, moved_piece, captured_piece, is_en_passant, en_passant_history, promotion, kingside_castle, queenside_castle, kingside_castle, queenside_castle) in self.history:
 
@@ -682,9 +682,12 @@ class Board:
                 pgn += f"{start_square_pgn}{end_square_pgn} "
 
         histo = pgn.strip()
-        print("Pgn de la partie: ", histo)
-        print("FEN de la position actuelle :", self.getboard())
-        print()
+        if print_log == True:
+            print()
+            print("Pgn de la partie: ", histo)
+            print("FEN de la position actuelle :", self.getboard())
+            print()
+        return histo
         
     ###################################################################
     
@@ -832,8 +835,8 @@ class Board:
                                              -30,-10, 30, 30, 30, 30,-10,-30,
                                              -30,-10, 30, 30, 30, 30,-10,-30,
                                              -30,-10, 20, 30, 30, 20,-10,-30,
-                                             -30,-30,  0,  0,-50,  0,-30,-30,
-                                             -50, 30, 30,-30, 10,-30, 30,-50]
+                                             -30,-30,-20,-20,-50,-20,-30,-30,
+                                             -50, 30, 30,-30,  0,-30, 30,-50]
                     WhiteScore += king_position_bonus[pos1]/50
                 
             elif(piece.couleur=='noir' and piece.nom!='VIDE'): 
@@ -907,13 +910,17 @@ class Board:
                                              -30,-10, 30, 30, 30, 30,-10,-30,
                                              -30,-10, 30, 30, 30, 30,-10,-30,
                                              -30,-10, 20, 30, 30, 20,-10,-30,
-                                             -30,-30,  0,  0,-50,  0,-30,-30,
-                                             -50, 30, 30,-30, 10,-30, 30,-50]
+                                             -30,-30,-20,-20,-50,-20,-30,-30,
+                                             -50, 30, 30,-30,  0,-30, 30,-50]
                     BlackScore += king_position_bonus[pos1^56]/50
-        r = random.randint(-10,10)/500
         if(self.side2move=='blanc'):
-            return WhiteScore-BlackScore+r
+            return WhiteScore-BlackScore
         else:
-            return BlackScore-WhiteScore+r
+            return BlackScore-WhiteScore
     
     ####################################################################
+    
+    def getboard_hash(self):
+        # suppose que getboard() retourne une chaîne de caractères représentant l'état du plateau
+        board_str = self.getboard()
+        return hash(board_str)  # Utilise la fonction de hachage intégrée
