@@ -28,12 +28,15 @@ class TranspositionTable:
             return entry
         return None
 
+    def clear(self):
+        self.table = [None] * self.size
+
 class Engine:
     """Code du moteur d'échecs"""
     
     def __init__(self):
         self.MAX_PLY = 1000
-        self.INFINITY=32000 
+        self.INFINITY = 32000 
         self.pv_length = [0] * self.MAX_PLY
         self.endgame = False
         self.init_depth = 4 # search in fixed depth
@@ -72,7 +75,7 @@ class Engine:
         if(c[3] not in numbers):
             return err[1]
             
-        return ''    
+        return ''
     
     def usermove(self,b,c):
         
@@ -89,7 +92,7 @@ class Engine:
         chk = self.chkCmd(c)
         if(chk!=''):
             print(chk)
-            return
+            return ""
             
         # Convert cases names to int, ex : e3 -> 44
         pos1=b.caseStr2Int(c[0]+c[1])
@@ -115,10 +118,11 @@ class Engine:
         # The move is not in list ? or let the king in check ?
         if(((pos1,pos2,promote) not in mList) or (b.domove(pos1,pos2,promote)==False)):
             print("\n"+c+' : incorrect move or let king in check'+"\n")
-            self.usermove(self,b,c)
+            return ""
             
 
     def search(self, b, human_turn):
+        self.clear_pv()
         book = None
         with open("openingbook.txt", "r") as file:
             opening_lines = file.readlines()
@@ -133,7 +137,7 @@ class Engine:
         self.nodes = 0
         b.ply = 0
         
-        if len(b.showHistory(False)) < 80:
+        if len(b.showHistory(False)) < 76:
             print("Looking at the opening file...")
             for line in opening_lines:
                 if str(line.strip()).startswith(b.showHistory(False)):
@@ -141,23 +145,23 @@ class Engine:
                         if len(b.showHistory(False).split(" ")) == 1:
                             next_move = line.strip().split(" ")[len(b.showHistory(False).split(" "))-1]
                             b.domove(b.caseStr2Int(next_move[0:2]), b.caseStr2Int(next_move[2:4]), "")  # Jouer le prochain coup dans la ligne du livre d'ouverture
-                            b.render(0, 0, 0, "Livre d'ouverture")
+                            b.render(0, 0, 0, "Livre d'ouverture", 0)
                             book = True
                         else:
                             next_move = line.strip().split(" ")[len(b.showHistory(False).split(" "))]
                             b.domove(b.caseStr2Int(next_move[0:2]), b.caseStr2Int(next_move[2:4]), "")  # Jouer le prochain coup dans la ligne du livre d'ouverture
-                            b.render(0, 0, 0, "Livre d'ouverture")
+                            b.render(0, 0, 0, "Livre d'ouverture", 0)
                             book =  True
                     else:
                         if len(b.showHistory(False).split(" ")) == 1:
                             next_move = line.strip().split(" ")[len(b.showHistory(False).split(" "))]
                             b.domove(b.caseStr2Int(next_move[0:2]), b.caseStr2Int(next_move[2:4]), "")  # Jouer le prochain coup dans la ligne du livre d'ouverture
-                            b.render(0, 0, 0, "Livre d'ouverture")
+                            b.render(0, 0, 0, "Livre d'ouverture", 0)
                             book = True
                         else:
                             next_move = line.strip().split(" ")[len(b.showHistory(False).split(" "))]
                             b.domove(b.caseStr2Int(next_move[0:2]), b.caseStr2Int(next_move[2:4]), "")  # Jouer le prochain coup dans la ligne du livre d'ouverture
-                            b.render(0, 0, 0, "Livre d'ouverture")
+                            b.render(0, 0, 0, "Livre d'ouverture", 0)
                             book = True
                     return None
         if not book == True:
@@ -165,12 +169,12 @@ class Engine:
 
             start = time.time()
             for i in range(1, self.init_depth + 1):
-                if b.material_everyone() < 20:
+                if b.material_everyone() < 30:
                     mode = "Mode finale activé"
-                    score = self.alphabeta(i, -100, 100, b)
+                    score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b)
                 else:
                     mode = "Mode standard"
-                    score = self.alphabeta(i, -100, 100, b)
+                    score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b)
                 end = time.time()
                 if b.side2move == 'blanc':
                     if score >= 0:
@@ -184,8 +188,6 @@ class Engine:
                     else:
                         score_text = colorama.Fore.RED + "+" + str(round(-score, 2)) + colorama.Fore.WHITE
                     print("{}\t{}\t{}\t{}\t{}\t".format(i, round(end - start, 3), self.nodes, round((self.nodes * (1 / round(end - start + 0.001, 3)) / 1000), 2), score_text), end='')
-                if score > 100 or score < -100 or score == 0:
-                    break
 
                 j = 0
                 while self.pv[j][j] != 0:
@@ -195,26 +197,35 @@ class Engine:
                     print("{}{}{}".format(pos1, pos2, c[2]), end=' ')
                     j += 1
                 print()
+                
+                best = self.pv[0][0]
+                if score > 100 or score < -100:
+                    break
+                
+            if best == 0:
+                self.clear_pv()
+                print("")
+                print("Extension de la recherche...")
+                self.transposition_table.clear()
+                score = self.alphabeta(4, -self.INFINITY, self.INFINITY, b)
+                best = self.pv[0][0]
+                end = time.time()
 
-            time.sleep(0.1)
             best = self.pv[0][0]
             b.domove(best[0], best[1], best[2])
-            b.render(score, self.nodes, end - start, mode)
+            nps = int(self.nodes * (1 / round(end - start + 0.001, 3)))
+            b.render(score, self.nodes, end - start, mode, nps)
 
-    def alphabeta(self, depth, alpha, beta, b):
+    def alphabeta(self, depth, alpha, beta, b):            
+        self.nodes += 1
+        self.pv_length[b.ply] = b.ply
+    
+        if depth == 0:
+            return b.evaluer()
+            
         # Vérifier s'il y a une entrée dans la table de transposition
         if self.transposition_table.probe(b.getboard_hash()) and self.transposition_table.probe(b.getboard_hash()).depth >= depth:
             return self.transposition_table.probe(b.getboard_hash()).score
-
-        if depth == 0:
-            return b.evaluer()
-
-        self.nodes += 1
-        self.pv_length[b.ply] = b.ply
-
-        # Ne pas aller trop profondément
-        if b.ply >= self.MAX_PLY - 1:
-            return b.evaluer()
 
         mList = b.gen_moves_list()
 
@@ -247,11 +258,11 @@ class Engine:
             if chk:
                 return -self.INFINITY + b.ply  # MAT
             else:
-                return 0  # DRAW
+                return -0.1  # DRAW
 
         # Stocker le résultat dans la table de transposition
         self.transposition_table.store(TranspositionEntry(b.getboard_hash(), score, depth))
-
+        
         return alpha
 
     def print_result(self, b):
@@ -268,6 +279,7 @@ class Engine:
             else:
                 print("1/2-1/2")
             self.endgame = True
+            b.showHistory(True)
             time.sleep(10000)
             
     def clear_pv(self):
