@@ -60,6 +60,12 @@ class Board:
         self.black_can_castle_7=True    
         
     ####################################################################
+    
+    def is_capture(self, destination):
+        #Do it work ?
+        return not self.cases[destination].isEmpty()
+    
+    ####################################################################
 
     def gen_moves_list(self,color='',dontCallIsAttacked=False):
         
@@ -241,6 +247,114 @@ class Board:
         return s
     
     #########################################################################
+    
+    def setboard(self,fen):
+        
+        """Set the board to the FEN position given. i.e. :
+        rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - - 0
+        Returns TRUE or FALSE if done or not.
+        If not : print errors.
+        """
+        
+        f=fen.split()
+        err=""
+        
+        if(len(f)!=3):
+            err+="Wrong FEN notation. It should be :\n"
+            err+="[pieces] [side to move] [castle rights] [ep] [plys] [move number]\n"
+            err+="i.e. : rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1\n"
+            print(err)
+            return False
+            
+        self.init()
+        self.white_can_castle_56=False
+        self.white_can_castle_63=False
+        self.black_can_castle_0=False
+        self.black_can_castle_7=False        
+        
+        fen =   f[0] # rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR
+        trait = f[1] # b ou w (black,white)
+        roque = f[2] # KQkq
+        
+        # Setting pieces
+        i=0
+        for c in fen:
+            if(c=='k'):
+                self.cases[i]=Piece('ROI','noir')
+                i=i+1
+            elif(c=='q'):
+                self.cases[i]=Piece('DAME','noir')
+                i=i+1
+            elif(c=='r'):
+                self.cases[i]=Piece('TOUR','noir')
+                i=i+1
+            elif(c=='n'):
+                self.cases[i]=Piece('CAVALIER','noir')
+                i=i+1
+            elif(c=='b'):
+                self.cases[i]=Piece('FOU','noir')
+                i=i+1
+            elif(c=='p'):
+                self.cases[i]=Piece('PION','noir')
+                i=i+1
+            elif(c=='K'):
+               self.cases[i]=Piece('ROI','blanc')
+               i=i+1
+            elif(c=='Q'):
+               self.cases[i]=Piece('DAME','blanc') 
+               i=i+1
+            elif(c=='R'):
+                self.cases[i]=Piece('TOUR','blanc')
+                i=i+1
+            elif(c=='N'):
+                self.cases[i]=Piece('CAVALIER','blanc')
+                i=i+1
+            elif(c=='B'):
+                self.cases[i]=Piece('FOU','blanc')
+                i=i+1
+            elif(c=='P'):
+                self.cases[i]=Piece('PION','blanc')
+                i=i+1
+            elif(c=='/'):
+                pass
+            else: # a number of empty squares is given
+                try:
+                    nb=int(c)
+                except ValueError:
+                    print('Error : wrong FEN. Integer expected.')
+                    return                
+                cpt=0
+                while(cpt<nb):
+                    self.cases[i]=Piece()
+                    cpt=cpt+1
+                    i=i+1
+
+        # Checking number of squares
+        if(i!=64):
+            print('Error : wrong FEN.')
+            self.init()
+            return False
+                    
+        # Site to move
+        if(trait=='b'):
+            self.side2move='noir'
+        else:
+            self.side2move='blanc'
+            
+        # Castle rights
+        if(roque!='-'):
+            if('K' in roque):
+                self.white_can_castle_63=True
+            if('Q' in roque):
+                self.white_can_castle_56=True
+            if('k' in roque):
+                self.black_can_castle_7=True
+            if('q' in roque):
+                self.black_can_castle_0=True
+        
+        return True
+    
+    ####################################################################
     
     def domove(self,depart,arrivee,promote):
         
@@ -724,114 +838,67 @@ class Board:
                     
         return WhiteScore + BlackScore
     
-    def material(self):
-        WhiteScore=0
-        BlackScore=0
-        for pos1,piece in enumerate(self.cases): 
+    ###################################################################
+    
+    def material_and_position_score(self):
+        piece_values = {
+            'PION': 1.2,
+            'CAVALIER': 3.1,
+            'FOU': 3.4,
+            'TOUR': 5.3,
+            'DAME': 8.5,
+            'ROI': 0  # Le roi n'a pas de valeur fixe dans l'évaluation matérielle
+        }
+
+        position_bonuses = {
+            'PION': (pawn_position_bonus, pawn_position_bonus_END),
+            'CAVALIER': (knight_position_bonus, knight_position_bonus),
+            'FOU': (bishop_position_bonus, bishop_position_bonus),
+            'TOUR': (rook_position_bonus, rook_position_bonus),
+            'DAME': (queen_position_bonus, queen_position_bonus),
+            'ROI': (king_position_bonus, king_position_bonus_END)
+        }
+
+        WhiteScore = 0
+        BlackScore = 0
+        total_material_score = 0
+
+        for pos1, piece in enumerate(self.cases):
             if piece.nom == 'VIDE':
                 continue
 
-            if(piece.couleur=='blanc'):
-                if piece.nom == 'PION':
-                    WhiteScore += 1.2
-                elif piece.nom == 'CAVALIER':
-                    WhiteScore += 3.1
-                elif piece.nom == 'FOU':
-                    WhiteScore += 3.4
-                elif piece.nom == 'TOUR':
-                    WhiteScore += 5.3
-                elif piece.nom == 'DAME':
-                    WhiteScore += 8.5
-                    
-            elif(piece.couleur=='noir'): 
-                if piece.nom == 'PION':
-                    BlackScore += 1.2
-                elif piece.nom == 'CAVALIER':
-                    BlackScore += 3.1
-                elif piece.nom == 'FOU':
-                    BlackScore += 3.4
-                elif piece.nom == 'TOUR':
-                    BlackScore += 5.3
-                elif piece.nom == 'DAME':
-                    BlackScore += 8.5
-    
-        return WhiteScore - BlackScore
+            value = piece_values.get(piece.nom, 0)
+            bonus, end_bonus = position_bonuses.get(piece.nom, (None, None))
+
+            if piece.couleur == 'blanc':
+                WhiteScore += value
+                if bonus:
+                    WhiteScore += (end_bonus[pos1] if total_material_score < 30 else bonus[pos1]) / 50
+            elif piece.couleur == 'noir':
+                BlackScore += value
+                if bonus:
+                    BlackScore += (end_bonus[pos1^56] if total_material_score < 30 else bonus[pos1^56]) / 50
+
+            total_material_score += value
+
+        return WhiteScore, BlackScore, total_material_score
     
     ###################################################################
     
-    def evaluer(self):
+    def evaluer(self, rdm):
+        WhiteScore, BlackScore, total_material_score = self.material_and_position_score()
         
-        """A wonderful evaluate() function returning score"""
-        
-        WhiteScore = 0
-        BlackScore = 0
-        
-        total_material_score = self.material_everyone()
-        
-        # Parsing the board squares from 0 to 63
-        for pos1,piece in enumerate(self.cases):       
-            if piece.nom == 'VIDE':
-                continue
-
-            # Score ( using PESTO table )
-            if(piece.couleur=='blanc'):
-                WhiteScore += piece.valeur
-                
-                if piece.nom == 'PION':
-                    if total_material_score < 30:
-                        WhiteScore += pawn_position_bonus_END[pos1]/50
-                    else:
-                        WhiteScore += pawn_position_bonus[pos1]/50
-                
-                elif piece.nom == 'CAVALIER':
-                    WhiteScore += knight_position_bonus[pos1]/50
-                
-                elif piece.nom == 'FOU':
-                    WhiteScore += bishop_position_bonus[pos1]/50
-                
-                elif piece.nom == 'TOUR':
-                    WhiteScore += rook_position_bonus[pos1]/50
-                
-                elif piece.nom == 'DAME':
-                    WhiteScore += queen_position_bonus[pos1]/50
-                
-                elif piece.nom == 'ROI':
-                    if total_material_score < 30:
-                        WhiteScore += king_position_bonus_END[pos1]/50
-                    else:
-                        WhiteScore += king_position_bonus[pos1]/50  
-                
-            elif(piece.couleur=='noir'): 
-                BlackScore+=piece.valeur
-                
-                if piece.nom == 'PION':
-                    if total_material_score < 30:
-                        BlackScore += pawn_position_bonus_END[pos1^56]/50
-                    else:
-                        BlackScore += pawn_position_bonus[pos1^56]/50
-                
-                elif piece.nom == 'CAVALIER':
-                    BlackScore += knight_position_bonus[pos1^56]/50
-                
-                elif piece.nom == 'FOU':
-                    BlackScore += bishop_position_bonus[pos1^56]/50
-                
-                elif piece.nom == 'TOUR':
-                    BlackScore += rook_position_bonus[pos1^56]/50
-                
-                elif piece.nom == 'DAME':
-                    BlackScore += queen_position_bonus[pos1^56]/50
-                
-                elif piece.nom == 'ROI':
-                    if total_material_score < 30:
-                        BlackScore += king_position_bonus_END[pos1^56]/50
-                    else:
-                        BlackScore += king_position_bonus[pos1^56]/50
-                        
-        if(self.side2move=='blanc'):
-            return WhiteScore-BlackScore
+        if rdm:
+            random_bonus = random.randint(-20, 20) / 20
         else:
-            return BlackScore-WhiteScore
+            random_bonus = 0
+
+        score = WhiteScore - BlackScore + random_bonus
+        
+        if self.side2move == 'noir':
+            score = -score
+        
+        return score
     
     ####################################################################
     
@@ -882,7 +949,7 @@ rook_position_bonus =  [ 5,  0,  0,  0,  0,  0,  0,  5,
                          5, 10, 10, 10, 10, 10, 10,  5,
                         -5,  0,  0,  0,  0,  0,  0, -5,
                          5, 10, 10, 10, 10, 10, 10,  5,
-                         5,  0, 10, 20, 20, 10,  0,  5]
+                         0,  0, 10, 20, 20, 10,  0,  0]
                          
 queen_position_bonus =  [-10,-10,-10, -5, -5,-10,-10,-10,
                          -10,  0,  5,  0,  0,  5,  0,-10,
@@ -899,7 +966,7 @@ king_position_bonus =  [-30,-40,-40,-50,-50,-40,-40,-30,
                         -30,-10, 30, 30, 30, 30,-10,-30,
                         -30,-10, 30, 30, 30, 30,-10,-30,
                         -30,-10, 20, 30, 30, 20,-10,-30,
-                        -30,-30,-20,-20,-50,-20,-30,-30,
+                        -30,-30,-20,-20,-50,-20,  0,-30,
                         -50, 30, 30,-30,  0,-30, 30,-50]
                         
 king_position_bonus_END =  [-30,-40,-40,-50,-50,-40,-40,-30,

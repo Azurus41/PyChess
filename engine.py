@@ -35,7 +35,7 @@ class Engine:
     """Code du moteur d'échecs"""
     
     def __init__(self):
-        self.MAX_PLY = 1000
+        self.MAX_PLY = 4
         self.INFINITY = 32000 
         self.pv_length = [0] * self.MAX_PLY
         self.endgame = False
@@ -121,13 +121,13 @@ class Engine:
             return ""
             
 
-    def search(self, b, human_turn):
-        self.clear_pv()
+    def search(self, b, human_turn, chess960):
         book = None
-        with open("openingbook.txt", "r") as file:
-            opening_lines = file.readlines()
-    
-        random.shuffle(opening_lines)
+        if chess960 == None:
+            with open("openingbook.txt", "r") as file:
+                opening_lines = file.readlines()
+        
+            random.shuffle(opening_lines)
         
         if self.endgame:
             self.print_result(b)
@@ -137,7 +137,7 @@ class Engine:
         self.nodes = 0
         b.ply = 0
         
-        if len(b.showHistory(False)) < 76:
+        if len(b.showHistory(False)) < 76 and chess960 == None:
             print("Looking at the opening file...")
             for line in opening_lines:
                 if str(line.strip()).startswith(b.showHistory(False)):
@@ -166,15 +166,15 @@ class Engine:
                     return None
         if not book == True:
             print("ply\ttime\tnodes\tkn/s\tscore\tpv")
-
+                
             start = time.time()
             for i in range(1, self.init_depth + 1):
                 if b.material_everyone() < 30:
                     mode = "Mode finale activé"
-                    score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b)
+                    score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b, False)
                 else:
                     mode = "Mode standard"
-                    score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b)
+                    score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b, False)
                 end = time.time()
                 if b.side2move == 'blanc':
                     if score >= 0:
@@ -188,7 +188,7 @@ class Engine:
                     else:
                         score_text = colorama.Fore.RED + "+" + str(round(-score, 2)) + colorama.Fore.WHITE
                     print("{}\t{}\t{}\t{}\t{}\t".format(i, round(end - start, 3), self.nodes, round((self.nodes * (1 / round(end - start + 0.001, 3)) / 1000), 2), score_text), end='')
-
+                best = self.pv[0][0]
                 j = 0
                 while self.pv[j][j] != 0:
                     c = self.pv[j][j]
@@ -197,17 +197,14 @@ class Engine:
                     print("{}{}{}".format(pos1, pos2, c[2]), end=' ')
                     j += 1
                 print()
-                
-                best = self.pv[0][0]
                 if score > 100 or score < -100:
                     break
-                
             if best == 0:
                 self.clear_pv()
                 print("")
                 print("Extension de la recherche...")
                 self.transposition_table.clear()
-                score = self.alphabeta(4, -self.INFINITY, self.INFINITY, b)
+                score = self.alphabeta(4, -self.INFINITY, self.INFINITY, b, True)
                 best = self.pv[0][0]
                 end = time.time()
 
@@ -216,26 +213,33 @@ class Engine:
             nps = int(self.nodes * (1 / round(end - start + 0.001, 3)))
             b.render(score, self.nodes, end - start, mode, nps)
 
-    def alphabeta(self, depth, alpha, beta, b):            
+    def alphabeta(self, depth, alpha, beta, b, rdm):            
         self.nodes += 1
         self.pv_length[b.ply] = b.ply
     
         if depth == 0:
-            return b.evaluer()
+            return b.evaluer(rdm)
             
         # Vérifier s'il y a une entrée dans la table de transposition
         if self.transposition_table.probe(b.getboard_hash()) and self.transposition_table.probe(b.getboard_hash()).depth >= depth:
             return self.transposition_table.probe(b.getboard_hash()).score
+            
+        if(b.ply >= self.MAX_PLY - 1):
+            return b.evaluer(rdm)
 
         mList = b.gen_moves_list()
 
         f = False  # drapeau pour savoir si au moins un coup sera effectué
         for move in mList:
+            capture = b.is_capture(move[1])
             if not b.domove(move[0], move[1], move[2]):
                 continue
 
             f = True  # un coup a été effectué
-            score = -self.alphabeta(depth - 1, -beta, -alpha, b)
+            if b.in_check(b.side2move) or capture:
+                score = -self.alphabeta(depth, -beta, -alpha, b, rdm)
+            else:
+                score = -self.alphabeta(depth - 1, -beta, -alpha, b, rdm)
 
             # Annuler le coup
             b.undomove()
