@@ -58,6 +58,9 @@ while self_play == None:
             b.showHistory(True)
                 
             human_turn = not human_turn
+    elif self_play == "perft":
+        print(e.perft(b,3))
+        
     elif self_play == "960":
         print("Keep only this part of a FEN : rnqbbnkr/pppppppp/8/8/8/8/PPPPPPPP/RNQBBNKR w KQkq")
         fen = str(input("FEN of starting position : "))
@@ -114,3 +117,5 @@ while self_play == None:
                 b.showHistory(True)
                     
                 human_turn = not human_turn
+        elif self_play == "perft":
+            print(e.perft(b,3))
