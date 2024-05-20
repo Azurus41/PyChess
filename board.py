@@ -62,23 +62,9 @@ class Board:
     ####################################################################
     
     def is_capture(self, destination):
-        #It work, but it it disabeled in engine.py so far
-        return self.cases[destination].nom != "PION" and self.cases[destination].isEmpty == False
+        #TODO
+        return not self.cases[destination].isEmpty()
     
-    ####################################################################
-
-    def piece_value(self, piece_name):
-        """Returns the value of a given piece."""
-        values = {
-            'PION': 1,
-            'CAVALIER': 3,
-            'FOU': 3,
-            'TOUR': 5,
-            'DAME': 9,
-            'ROI': float('inf')  # Roi n'a pas de valeur définie en termes de capture
-        }
-        return values.get(piece_name, 0)
-
     ####################################################################
 
     def gen_moves_list(self, color='', dontCallIsAttacked=False):
@@ -120,13 +106,13 @@ class Board:
             
             for move in piece_moves:
                 if self.is_capture(move[1]):
-                    capture_moves.append(move, piece_value(self.cases[move[0]].nom))
+                    capture_moves.append(move)
                 else:
                     non_capture_moves.append(move)
         
         # Sort capture moves by the value of the captured piece (lower values first)
         capture_moves.sort(key=lambda x: x[1])
-        sorted_capture_moves = [move for move, value in capture_moves]
+        sorted_capture_moves = [move for move in capture_moves]
         
         return sorted_capture_moves + non_capture_moves
         
@@ -826,7 +812,7 @@ class Board:
                 if piece.nom == 'PION':
                     WhiteScore += 1.2
                 elif piece.nom == 'CAVALIER':
-                    WhiteScore += 2.9
+                    WhiteScore += 3.1
                 elif piece.nom == 'FOU':
                     WhiteScore += 3.4
                 elif piece.nom == 'TOUR':
@@ -838,7 +824,7 @@ class Board:
                 if piece.nom == 'PION':
                     BlackScore += 1.2
                 elif piece.nom == 'CAVALIER':
-                    BlackScore += 2.9
+                    BlackScore += 3.1
                 elif piece.nom == 'FOU':
                     BlackScore += 3.4
                 elif piece.nom == 'TOUR':
@@ -847,8 +833,6 @@ class Board:
                     BlackScore += 8.5
                     
         return WhiteScore + BlackScore
-    
-    ###################################################################
     
     def material(self):
         WhiteScore=0
@@ -861,7 +845,7 @@ class Board:
                 if piece.nom == 'PION':
                     WhiteScore += 1.2
                 elif piece.nom == 'CAVALIER':
-                    WhiteScore += 2.9
+                    WhiteScore += 3.1
                 elif piece.nom == 'FOU':
                     WhiteScore += 3.4
                 elif piece.nom == 'TOUR':
@@ -873,7 +857,7 @@ class Board:
                 if piece.nom == 'PION':
                     BlackScore += 1.2
                 elif piece.nom == 'CAVALIER':
-                    BlackScore += 2.9
+                    BlackScore += 3.1
                 elif piece.nom == 'FOU':
                     BlackScore += 3.4
                 elif piece.nom == 'TOUR':
@@ -904,7 +888,7 @@ class Board:
                 WhiteScore += piece.valeur
                 
                 if piece.nom == 'PION':
-                    if total_material_score < 40:
+                    if total_material_score < 30:
                         WhiteScore += pawn_position_bonus_END[pos1]/50
                     else:
                         WhiteScore += pawn_position_bonus[pos1]/50
@@ -915,15 +899,13 @@ class Board:
                 elif piece.nom == 'FOU':
                     WhiteScore += bishop_position_bonus[pos1]/50
                 
-                '''
                 elif piece.nom == 'TOUR':
                     WhiteScore += rook_position_bonus[pos1]/50
                 
                 elif piece.nom == 'DAME':
                     WhiteScore += queen_position_bonus[pos1]/50
-                '''
                 
-                if piece.nom == 'ROI':
+                elif piece.nom == 'ROI':
                     if total_material_score < 30:
                         WhiteScore += king_position_bonus_END[pos1]/50
                     else:
@@ -944,29 +926,27 @@ class Board:
                 elif piece.nom == 'FOU':
                     BlackScore += bishop_position_bonus[pos1^56]/50
                 
-                '''
                 elif piece.nom == 'TOUR':
                     BlackScore += rook_position_bonus[pos1^56]/50
                 
                 elif piece.nom == 'DAME':
                     BlackScore += queen_position_bonus[pos1^56]/50
-                '''
                 
-                if piece.nom == 'ROI':
+                elif piece.nom == 'ROI':
                     if total_material_score < 30:
                         BlackScore += king_position_bonus_END[pos1^56]/50
                     else:
                         BlackScore += king_position_bonus[pos1^56]/50
                         
         if rdm == True:
-            r = random.randint(-20,20)/50
+            r = random.randint(-20,20)/20
         else:
             r = 0
         if(self.side2move=='blanc'):
             return WhiteScore-BlackScore
         else:
             return BlackScore-WhiteScore
-
+    
     ####################################################################
     
     def getboard_hash(self):
@@ -974,12 +954,12 @@ class Board:
         return hash(board_str)  # Utilise la fonction de hachage intégrée
         
 pawn_position_bonus =  [ 0,  0,  0,  0,  0,  0,  0,  0,
-                         0,  0,  0,  0,  0,  0,  0,  0,
-                         0,  0,  0,  0,  0,  0,  0,  0,
-                         0,  0,  0,  0,  0,  0,  0,  0,
-                         0,  0, 20, 20, 10,  0,  0,  0,
-                        10, 15, 10, 10, 15, 10,  0, 10,
-                        10, 10,  0,  0,  0, 20, 20, 10,
+                        50, 50, 50, 50, 50, 50, 50, 50,
+                        20, 10, 20, 30, 30, 20, 10, 20,
+                        15,  5, 10, 25, 25, 10,  5, 15,
+                        10,  0,  0, 20, 10,  0,  0, 10,
+                         5,  5, 15,  0, 10,-10, 10,  5,
+                         5,  0,  0,-20,  0, 10,  5,  5,
                          0,  0,  0,  0,  0,  0,  0,  0]
                         
 pawn_position_bonus_END =  [ 0,  0,  0,  0,  0,  0,  0,  0,
@@ -996,17 +976,17 @@ knight_position_bonus = [-30,  0,-10,  0,  0,-10,  0,-30,
                          -20,  0,  0, 15, 15,  0,  0,-20,
                          -10,  0, 15,  0,  0, 15,  0,-10,
                          -10,  0, 15,  0,  0, 15,  0,-10,
-                         -20,  5, 15, 10, 10, 15,  5,-20,
-                         -20, -5,  0, 10, 10,  0, -5,-20,
+                         -20, 15, 15, 15, 15, 15,  5,-20,
+                         -20, -5,  0, 10,  5,  0, -5,-20,
                          -30,  0,-10,  0,  0,-10,  0,-30]
         
 bishop_position_bonus = [-20,-10,-10,-10,-10,-10,-10,-20,
                          -10,  0,  0,  0,  0,  0,  0,-10,
                          -10,  0,  5, 10, 10,  5,  0,-10,
-                         -10,  5,  5, 10, 10,  5,  5,-10,
-                         -10,  0, 15, 10, 10, 10,  0,-10,
-                         -10, 10, 10,  5, -5, 10, 10,-10,
-                         -10, 20,  0, 10, 10,  0, 0,-10,
+                         -10,  0,  5, 10, 10,  5,  5,-10,
+                         -10,  0,  0, 10, 10, 10,  0,-10,
+                         -10, 10, 10,  0, -5, 10, 10,-10,
+                         -10, 10,  0,-10,-10,  0, 15,-10,
                          -20,-10,-10,-10,-10,-10,-10,-30]
         
 rook_position_bonus =  [ 5,  0,  0,  0,  0,  0,  0,  5,
@@ -1015,7 +995,7 @@ rook_position_bonus =  [ 5,  0,  0,  0,  0,  0,  0,  5,
                          5, 10, 10, 10, 10, 10, 10,  5,
                          5, 10, 10, 10, 10, 10, 10,  5,
                         -5,  0,  0,  0,  0,  0,  0, -5,
-                        10, 10, 10, 20, 20, 10, 10, 10,
+                         5, 10, 10, 10, 10, 10, 10,  5,
                          0,  0, 10, 20, 20, 10,  0,  0]
                          
 queen_position_bonus =  [-10,-10,-10, -5, -5,-10,-10,-10,

@@ -6,18 +6,45 @@ import colorama
 colorama.init()
 import random
 
+class TranspositionEntry:
+    def __init__(self, key, score, depth):
+        self.key = key  # Clé de hachage pour identifier l'état du plateau
+        self.score = score  # Score évalué pour cette entrée
+        self.depth = depth
+
+class TranspositionTable:
+    def __init__(self, size=2**10):  # Taille par défaut de la table de transposition
+        self.size = size
+        self.table = [None] * size
+
+    def store(self, entry):
+        index = entry.key % self.size
+        self.table[index] = entry
+
+    def probe(self, key):
+        index = key % self.size
+        entry = self.table[index]
+        if entry and entry.key == key:
+            return entry
+        return None
+
+    def clear(self):
+        self.table = [None] * self.size
+
 class Engine:
     """Code du moteur d'échecs"""
     
     def __init__(self):
-        self.MAX_PLY = 6
+        self.MAX_PLY = 1000
         self.INFINITY = 32000 
         self.pv_length = [0] * self.MAX_PLY
         self.endgame = False
-        self.init_depth = 1 # search in fixed depth
+        self.init_depth = 2 # search in fixed depth
         self.nodes = 0 # number of nodes
         self.stop_search = False 
         self.clear_pv()
+        self.fen_table = []
+        self.transposition_table = TranspositionTable()
         
     def chkCmd(self,c):
         """Check if the command 'c' typed by user is like a move,
@@ -93,23 +120,7 @@ class Engine:
             print("\n"+c+' : incorrect move or let king in check'+"\n")
             return ""
             
-    def perft(self, b, depth):
-        start = time.time()
-        """Effectue une recherche de performance (perft) pour la profondeur spécifiée."""
-        if depth == 0:
-            return 1
 
-        total_nodes = 0
-        mList = b.gen_moves_list()
-
-        for move in mList:
-            if b.domove(move[0], move[1], move[2]):
-                total_nodes += self.perft(b, depth - 1)
-                b.undomove()
-        end = time.time()
-        print(start - end)
-        return total_nodes
-        
     def search(self, b, human_turn, chess960):
         book = None
         if chess960 == None:
@@ -122,6 +133,7 @@ class Engine:
             self.print_result(b)
             return
 
+        self.transposition_table.clear()
         self.clear_pv()
         self.nodes = 0
         b.ply = 0
@@ -159,10 +171,10 @@ class Engine:
             start = time.time()
             for i in range(1, self.init_depth + 1):
                 if b.material_everyone() < 30:
-                    mode = "Mode finale activé (" + str(self.init_depth) + "+" + str(self.MAX_PLY - self.init_depth) + ")"
+                    mode = "Mode finale activé"
                     score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b, False)
                 else:
-                    mode = "Mode normal activé (" + str(self.init_depth) + "+" + str(self.MAX_PLY - self.init_depth) + ")"
+                    mode = "Mode standard"
                     score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b, False)
                 end = time.time()
                 if b.side2move == 'blanc':
@@ -200,30 +212,21 @@ class Engine:
     
         if depth == 0:
             return b.evaluer(rdm)
-            
-        if(b.ply >= self.MAX_PLY - 1):
-            return b.evaluer(rdm)
-        
+
         mList = b.gen_moves_list()
 
         f = False  # drapeau pour savoir si au moins un coup sera effectué
         for move in mList:
-            '''
             capture = b.is_capture(move[1])
-            '''
-            
             if not b.domove(move[0], move[1], move[2]):
                 continue
-            f = True # un coup a été effectué
 
-            '''
+            f = True  # un coup a été effectué
             if b.in_check(b.side2move) or capture:
                 score = -self.alphabeta(depth, -beta, -alpha, b, rdm)
             else:
                 score = -self.alphabeta(depth - 1, -beta, -alpha, b, rdm)
-            '''
-            score = -self.alphabeta(depth - 1, -beta, -alpha, b, rdm)
-            
+
             # Annuler le coup
             b.undomove()
 
@@ -237,15 +240,15 @@ class Engine:
                 j = b.ply + 1
                 while j < self.pv_length[b.ply + 1]:
                     self.pv[b.ply][j] = self.pv[b.ply + 1][j]
-                    self.pv_length[b.ply] = self.pv_length[b.ply + 1]
                     j += 1
+                self.pv_length[b.ply] = self.pv_length[b.ply+1]+1
 
         if not f:
             chk = b.in_check(b.side2move)
             if chk:
                 return -self.INFINITY + b.ply  # MAT
             else:
-                return 0  # DRAW
+                return -0.1  # DRAW
 
         return alpha
 
