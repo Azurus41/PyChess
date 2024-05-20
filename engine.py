@@ -4,32 +4,6 @@ from piece import *
 import time
 import colorama
 colorama.init()
-import random
-
-class TranspositionEntry:
-    def __init__(self, key, score, depth):
-        self.key = key  # Clé de hachage pour identifier l'état du plateau
-        self.score = score  # Score évalué pour cette entrée
-        self.depth = depth
-
-class TranspositionTable:
-    def __init__(self, size=2**10):  # Taille par défaut de la table de transposition
-        self.size = size
-        self.table = [None] * size
-
-    def store(self, entry):
-        index = entry.key % self.size
-        self.table[index] = entry
-
-    def probe(self, key):
-        index = key % self.size
-        entry = self.table[index]
-        if entry and entry.key == key:
-            return entry
-        return None
-
-    def clear(self):
-        self.table = [None] * self.size
 
 class Engine:
     """Code du moteur d'échecs"""
@@ -43,8 +17,6 @@ class Engine:
         self.nodes = 0 # number of nodes
         self.stop_search = False 
         self.clear_pv()
-        self.fen_table = []
-        self.transposition_table = TranspositionTable()
         
     def chkCmd(self,c):
         """Check if the command 'c' typed by user is like a move,
@@ -133,7 +105,6 @@ class Engine:
             self.print_result(b)
             return
 
-        self.transposition_table.clear()
         self.clear_pv()
         self.nodes = 0
         b.ply = 0
@@ -172,10 +143,10 @@ class Engine:
             for i in range(1, self.init_depth + 1):
                 if b.material_everyone() < 30:
                     mode = "Mode finale activé"
-                    score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b, False)
+                    score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b)
                 else:
                     mode = "Mode standard"
-                    score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b, False)
+                    score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b)
                 end = time.time()
                 if b.side2move == 'blanc':
                     if score >= 0:
@@ -206,12 +177,12 @@ class Engine:
             nps = int(self.nodes * (1 / round(end - start + 0.001, 3)))
             b.render(score, self.nodes, end - start, mode, nps)
 
-    def alphabeta(self, depth, alpha, beta, b, rdm):            
+    def alphabeta(self, depth, alpha, beta, b):            
         self.nodes += 1
         self.pv_length[b.ply] = b.ply
     
         if depth == 0:
-            return b.evaluer(rdm)
+            return b.evaluer()
 
         mList = b.gen_moves_list()
 
@@ -219,13 +190,9 @@ class Engine:
         for move in mList:
             if not b.domove(move[0], move[1], move[2]):
                 continue
-                
-            if b.reverse(move):
-                #print(move)
-                continue
 
             f = True  # un coup a été effectué
-            score = -self.alphabeta(depth - 1, -beta, -alpha, b, rdm)
+            score = -self.alphabeta(depth - 1, -beta, -alpha, b)
 
             # Annuler le coup
             b.undomove()
@@ -240,16 +207,12 @@ class Engine:
                 j = b.ply + 1
                 while j < self.pv_length[b.ply + 1]:
                     self.pv[b.ply][j] = self.pv[b.ply + 1][j]
+                    self.pv_length[b.ply] = self.pv_length[b.ply + 1]
                     j += 1
-                self.pv_length[b.ply] = self.pv_length[b.ply+1]+1
 
         if not f:
-            chk = b.in_check(b.side2move)
-            if chk:
-                return -self.INFINITY + b.ply  # MAT
-            else:
-                return 0  # DRAW
-
+            return -self.INFINITY + b.ply  # MAT
+        
         return alpha
 
     def print_result(self, b):

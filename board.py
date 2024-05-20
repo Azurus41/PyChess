@@ -62,8 +62,8 @@ class Board:
     ####################################################################
     
     def is_capture(self, destination):
-        #UNUSED but okay
-        return not self.cases[destination].isEmpty()
+        #It work, but it it disabeled in engine.py so far
+        return self.cases[destination].isEmpty == False
     
     ####################################################################
 
@@ -110,21 +110,7 @@ class Board:
                 else:
                     non_capture_moves.append(move)
         
-        # Sort capture moves by the value of the captured piece (lower values first)
-        capture_moves.sort(key=lambda x: x[1])
-        sorted_capture_moves = [move for move in capture_moves]
-        
-        return sorted_capture_moves + non_capture_moves
-        
-    #################################################################
-    
-    def reverse(self, move):
-        str_move = str(self.caseInt2Str(int(move[1]))) + str(self.caseInt2Str(int(move[0])))
-        if move[2] != '':
-            str_move += str(move[2])
-        #print("'", str_move, "'", "'", self.showHistory(False)[-9:-5], "'", str_move == self.showHistory(False)[-9:-5])
-        if str_move == self.showHistory(False)[-9:-5]:
-            return True
+        return capture_moves + non_capture_moves
         
     #################################################################
     
@@ -267,8 +253,8 @@ class Board:
         
         if(len(f)!=3):
             err+="Wrong FEN notation. It should be :\n"
-            err+="[pieces] [side to move] [castle rights] [ep] [plys] [move number]\n"
-            err+="i.e. : rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1\n"
+            err+="[pieces] [side to move] [castle rights]\n"
+            err+="i.e. : rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq\n"
             print(err)
             return False
             
@@ -879,7 +865,7 @@ class Board:
     
     ###################################################################
     
-    def evaluer(self, rdm):
+    def evaluer(self):
         
         """A wonderful evaluate() function returning score"""
         
@@ -901,7 +887,7 @@ class Board:
                     if total_material_score < 30:
                         WhiteScore += pawn_position_bonus_END[pos1]/50
                     else:
-                        WhiteScore += pawn_position_bonus[pos1]/50
+                        WhiteScore += ((-(63-pos1)//8) + 3)/50
                 
                 elif piece.nom == 'CAVALIER':
                     WhiteScore += knight_position_bonus[pos1]/50
@@ -909,17 +895,19 @@ class Board:
                 elif piece.nom == 'FOU':
                     WhiteScore += bishop_position_bonus[pos1]/50
                 
+                if piece.nom == 'ROI':
+                    if total_material_score < 30:
+                        WhiteScore += king_position_bonus_END[pos1]/50
+                    else:
+                        WhiteScore += king_position_bonus[pos1]/50 
+                        
+                '''
                 elif piece.nom == 'TOUR':
                     WhiteScore += rook_position_bonus[pos1]/50
                 
                 elif piece.nom == 'DAME':
                     WhiteScore += queen_position_bonus[pos1]/50
-                
-                elif piece.nom == 'ROI':
-                    if total_material_score < 30:
-                        WhiteScore += king_position_bonus_END[pos1]/50
-                    else:
-                        WhiteScore += king_position_bonus[pos1]/50  
+                '''
                 
             elif(piece.couleur=='noir'): 
                 BlackScore+=piece.valeur
@@ -928,30 +916,28 @@ class Board:
                     if total_material_score < 30:
                         BlackScore += pawn_position_bonus_END[pos1^56]/50
                     else:
-                        BlackScore += pawn_position_bonus[pos1^56]/50
+                        BlackScore += ((-(63-pos1^56)//8) + 3)/50
                 
                 elif piece.nom == 'CAVALIER':
                     BlackScore += knight_position_bonus[pos1^56]/50
                 
                 elif piece.nom == 'FOU':
                     BlackScore += bishop_position_bonus[pos1^56]/50
-                
-                elif piece.nom == 'TOUR':
-                    BlackScore += rook_position_bonus[pos1^56]/50
-                
-                elif piece.nom == 'DAME':
-                    BlackScore += queen_position_bonus[pos1^56]/50
-                
+                                
                 elif piece.nom == 'ROI':
                     if total_material_score < 30:
                         BlackScore += king_position_bonus_END[pos1^56]/50
                     else:
                         BlackScore += king_position_bonus[pos1^56]/50
+                
+                '''
+                elif piece.nom == 'TOUR':
+                    BlackScore += rook_position_bonus[pos1^56]/50
+                
+                elif piece.nom == 'DAME':
+                    BlackScore += queen_position_bonus[pos1^56]/50
+                '''
                         
-        if rdm == True:
-            r = random.randint(-20,20)/20
-        else:
-            r = 0
         if(self.side2move=='blanc'):
             return WhiteScore-BlackScore
         else:
@@ -986,15 +972,15 @@ knight_position_bonus = [-30,  0,-10,  0,  0,-10,  0,-30,
                          -20,  0,  0, 15, 15,  0,  0,-20,
                          -10,  0, 15,  0,  0, 15,  0,-10,
                          -10,  0, 15,  0,  0, 15,  0,-10,
-                         -20, 15, 15, 15, 15, 15,  5,-20,
-                         -20, -5,  0, 10,  5,  0, -5,-20,
+                         -30, 15, 15, 15, 15, 15, 15,-30,
+                         -20, -5,  0,-10,-10,  0, -5,-20,
                          -30,  0,-10,  0,  0,-10,  0,-30]
         
 bishop_position_bonus = [-20,-10,-10,-10,-10,-10,-10,-20,
                          -10,  0,  0,  0,  0,  0,  0,-10,
                          -10,  0,  5, 10, 10,  5,  0,-10,
-                         -10,  0,  5, 10, 10,  5,  5,-10,
-                         -10,  0,  0, 10, 10, 10,  0,-10,
+                         -10, 10,  5, 10, 10,  5,  5,-10,
+                         -10,  0, 10, 10, 10, 10,  0,-10,
                          -10, 10, 10,  0, -5, 10, 10,-10,
                          -10, 10,  0,-10,-10,  0, 15,-10,
                          -20,-10,-10,-10,-10,-10,-10,-30]
@@ -1024,7 +1010,7 @@ king_position_bonus =  [-30,-40,-40,-50,-50,-40,-40,-30,
                         -30,-10, 30, 30, 30, 30,-10,-30,
                         -30,-10, 20, 30, 30, 20,-10,-30,
                         -30,-30,-20,-20,-50,-20,  0,-30,
-                        -50, 30, 30,-30,  0,-30, 30,-50]
+                        -50, 30, 30,-30, 20,-30, 30,-50]
                         
 king_position_bonus_END =  [-30,-40,-40,-50,-50,-40,-40,-30,
                             -30,-20,-10, 20, 20,-10,-20,-30,
