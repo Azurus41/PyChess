@@ -62,7 +62,7 @@ class Board:
     ####################################################################
     
     def is_capture(self, destination):
-        #TODO
+        #UNUSED but okay
         return not self.cases[destination].isEmpty()
     
     ####################################################################
@@ -115,6 +115,16 @@ class Board:
         sorted_capture_moves = [move for move in capture_moves]
         
         return sorted_capture_moves + non_capture_moves
+        
+    #################################################################
+    
+    def reverse(self, move):
+        str_move = str(self.caseInt2Str(int(move[1]))) + str(self.caseInt2Str(int(move[0])))
+        if move[2] != '':
+            str_move += str(move[2])
+        #print("'", str_move, "'", "'", self.showHistory(False)[-9:-5], "'", str_move == self.showHistory(False)[-9:-5])
+        if str_move == self.showHistory(False)[-9:-5]:
+            return True
         
     #################################################################
     

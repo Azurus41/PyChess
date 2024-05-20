@@ -39,7 +39,7 @@ class Engine:
         self.INFINITY = 32000 
         self.pv_length = [0] * self.MAX_PLY
         self.endgame = False
-        self.init_depth = 2 # search in fixed depth
+        self.init_depth = 4 # search in fixed depth
         self.nodes = 0 # number of nodes
         self.stop_search = False 
         self.clear_pv()
@@ -217,15 +217,15 @@ class Engine:
 
         f = False  # drapeau pour savoir si au moins un coup sera effectué
         for move in mList:
-            capture = b.is_capture(move[1])
             if not b.domove(move[0], move[1], move[2]):
+                continue
+                
+            if b.reverse(move):
+                #print(move)
                 continue
 
             f = True  # un coup a été effectué
-            if b.in_check(b.side2move) or capture:
-                score = -self.alphabeta(depth, -beta, -alpha, b, rdm)
-            else:
-                score = -self.alphabeta(depth - 1, -beta, -alpha, b, rdm)
+            score = -self.alphabeta(depth - 1, -beta, -alpha, b, rdm)
 
             # Annuler le coup
             b.undomove()
@@ -248,7 +248,7 @@ class Engine:
             if chk:
                 return -self.INFINITY + b.ply  # MAT
             else:
-                return -0.1  # DRAW
+                return 0  # DRAW
 
         return alpha
 
