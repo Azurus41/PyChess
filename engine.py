@@ -4,6 +4,7 @@ from piece import *
 import time
 import colorama
 colorama.init()
+import random
 
 class Engine:
     """Code du moteur d'échecs"""
@@ -92,7 +93,6 @@ class Engine:
             print("\n"+c+' : incorrect move or let king in check'+"\n")
             return ""
             
-
     def search(self, b, human_turn, chess960):
         book = None
         if chess960 == None:
@@ -137,11 +137,14 @@ class Engine:
                             book = True
                     return None
         if not book == True:
-            print("ply\ttime\tnodes\tkn/s\tscore\tpv")
+            print("ply\ttime\tnodes\tkn/s\tscore\tbest")
                 
             start = time.time()
             for i in range(1, self.init_depth + 1):
-                if b.material_everyone() < 30:
+                if b.material_everyone() < 20:
+                    mode = "Mode finale  pieces min activé"
+                    score = self.alphabeta(i+2, -self.INFINITY, self.INFINITY, b)
+                if b.material_everyone() < 40:
                     mode = "Mode finale activé"
                     score = self.alphabeta(i, -self.INFINITY, self.INFINITY, b)
                 else:
@@ -161,13 +164,10 @@ class Engine:
                         score_text = colorama.Fore.RED + "+" + str(round(-score, 2)) + colorama.Fore.WHITE
                     print("{}\t{}\t{}\t{}\t{}\t".format(i, round(end - start, 3), self.nodes, round((self.nodes * (1 / round(end - start + 0.001, 3)) / 1000), 2), score_text), end='')
 
-                j = 0
-                while self.pv[j][j] != 0:
-                    c = self.pv[j][j]
-                    pos1 = b.caseInt2Str(c[0])
-                    pos2 = b.caseInt2Str(c[1])
-                    print("{}{}{}".format(pos1, pos2, c[2]), end=' ')
-                    j += 1
+                c = self.pv[0][0]
+                pos1 = b.caseInt2Str(c[0])
+                pos2 = b.caseInt2Str(c[1])
+                print("{}{}{}".format(pos1, pos2, c[2]), end=' ')
                 print()
                 if score > 100 or score < -100:
                     break
@@ -177,7 +177,7 @@ class Engine:
             nps = int(self.nodes * (1 / round(end - start + 0.001, 3)))
             b.render(score, self.nodes, end - start, mode, nps)
 
-    def alphabeta(self, depth, alpha, beta, b):            
+    def alphabeta(self, depth, alpha, beta, b):          
         self.nodes += 1
         self.pv_length[b.ply] = b.ply
     

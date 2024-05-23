@@ -3,10 +3,9 @@
 from piece import *
 import time
 import os
-import random
 import colorama
 colorama.init()
-from random import randint
+import random
 
 class Board:
     
@@ -67,50 +66,44 @@ class Board:
     
     ####################################################################
 
-    def gen_moves_list(self, color='', dontCallIsAttacked=False):
-        """Returns all possible moves for the requested color.
-        If color is not given, it is considered as the side to move.
-        dontCallIsAttacked is a boolean flag to avoid recursive calls,
-        due to the actually wrotten is_attacked() function calling
-        this gen_moves_list() function.
-        A move is defined as it :
-        - the number of the starting square (pos1)
-        - the number of the destination square (pos2)
-        - the name of the piece to promote '','q','r','b','n'
-          (queen, rook, bishop, knight)
-        """
-        color = self.side2move
-        opp_color = self.oppColor(color)
+    def gen_moves_list(self,color='',dontCallIsAttacked=False):
+        if(color==''):
+            color=self.side2move
+        mList=[]
         
-        capture_moves = []
-        non_capture_moves = []
-        
-        for pos1, piece in enumerate(self.cases):
-            if piece.couleur != color:
+        # For each 'piece' on the board (pos1 = 0 to 63)
+        for pos1,piece in enumerate(self.cases):
+                
+            # Piece (or empty square) color is not the wanted ? pass
+            if piece.couleur!=color:
                 continue
             
-            piece_moves = []
-            
-            if piece.nom == 'ROI':  # KING
-                piece_moves = piece.pos2_roi(pos1, opp_color, self, dontCallIsAttacked)
-            elif piece.nom == 'DAME':  # QUEEN = ROOK + BISHOP moves!
-                piece_moves = piece.pos2_tour(pos1, opp_color, self) + piece.pos2_fou(pos1, opp_color, self)
-            elif piece.nom == 'TOUR':  # ROOK
-                piece_moves = piece.pos2_tour(pos1, opp_color, self)
-            elif piece.nom == 'CAVALIER':  # KNIGHT
-                piece_moves = piece.pos2_cavalier(pos1, opp_color, self)
-            elif piece.nom == 'FOU':  # BISHOP
-                piece_moves = piece.pos2_fou(pos1, opp_color, self)
-            elif piece.nom == 'PION':  # PAWN
-                piece_moves = piece.pos2_pion(pos1, piece.couleur, self)
-            
-            for move in piece_moves:
-                if self.is_capture(move[1]):
-                    capture_moves.append(move)
-                else:
-                    non_capture_moves.append(move)
-        
-        return capture_moves + non_capture_moves
+            if(piece.nom=='ROI'): # KING
+                mList+=piece.pos2_roi(pos1,self.oppColor(color),self,dontCallIsAttacked)
+                continue
+                
+            elif(piece.nom=='DAME'): # QUEEN = ROOK + BISHOP moves !
+                mList+=piece.pos2_tour(pos1,self.oppColor(color),self)
+                mList+=piece.pos2_fou(pos1,self.oppColor(color),self)
+                continue
+                
+            elif(piece.nom=='TOUR'): # ROOK
+                mList+=piece.pos2_tour(pos1,self.oppColor(color),self)
+                continue
+                
+            elif(piece.nom=='CAVALIER'): # KNIGHT
+                mList+=piece.pos2_cavalier(pos1,self.oppColor(color),self)
+                continue
+                
+            elif(piece.nom=='FOU'): # BISHOP
+                mList+=piece.pos2_fou(pos1,self.oppColor(color),self)
+                continue
+                
+            if(piece.nom=='PION'): # PAWN
+                mList+=piece.pos2_pion(pos1,piece.couleur,self)
+                continue
+                
+        return mList
         
     #################################################################
     
@@ -200,11 +193,10 @@ class Board:
             
         # b or w (black,white)
         if(self.side2move=='blanc'):
-            s+=' w'
+            s+=' w '
         else:
-            s+=' b'
+            s+=' b '
             
-        '''
         # Castle rights (KQkq)
         no_castle_right=True
         if(self.white_can_castle_63):
@@ -222,6 +214,7 @@ class Board:
         if(no_castle_right):
             s+='-'
         
+        '''
         # prise en passant e3
         if(self.ep!=-1):
             s+=' '+self.coord[self.ep]
@@ -884,10 +877,10 @@ class Board:
                 WhiteScore += piece.valeur
                 
                 if piece.nom == 'PION':
-                    if total_material_score < 30:
+                    if total_material_score < 40:
                         WhiteScore += pawn_position_bonus_END[pos1]/50
                     else:
-                        WhiteScore += ((-(63-pos1)//8) + 3)/50
+                        WhiteScore += ((-(63-pos1)//8) + 3)/30
                 
                 elif piece.nom == 'CAVALIER':
                     WhiteScore += knight_position_bonus[pos1]/50
@@ -913,10 +906,10 @@ class Board:
                 BlackScore+=piece.valeur
                 
                 if piece.nom == 'PION':
-                    if total_material_score < 30:
+                    if total_material_score < 40:
                         BlackScore += pawn_position_bonus_END[pos1^56]/50
                     else:
-                        BlackScore += ((-(63-pos1^56)//8) + 3)/50
+                        BlackScore += ((-(63-pos1^56)//8) + 3)/30
                 
                 elif piece.nom == 'CAVALIER':
                     BlackScore += knight_position_bonus[pos1^56]/50
@@ -937,26 +930,12 @@ class Board:
                 elif piece.nom == 'DAME':
                     BlackScore += queen_position_bonus[pos1^56]/50
                 '''
-                        
+
+        r = random.randint(-10,10)/33
         if(self.side2move=='blanc'):
-            return WhiteScore-BlackScore
+            return WhiteScore-BlackScore + r
         else:
-            return BlackScore-WhiteScore
-    
-    ####################################################################
-    
-    def getboard_hash(self):
-        board_str = self.getboard()
-        return hash(board_str)  # Utilise la fonction de hachage intégrée
-        
-pawn_position_bonus =  [ 0,  0,  0,  0,  0,  0,  0,  0,
-                        50, 50, 50, 50, 50, 50, 50, 50,
-                        20, 10, 20, 30, 30, 20, 10, 20,
-                        15,  5, 10, 25, 25, 10,  5, 15,
-                        10,  0,  0, 20, 10,  0,  0, 10,
-                         5,  5, 15,  0, 10,-10, 10,  5,
-                         5,  0,  0,-20,  0, 10,  5,  5,
-                         0,  0,  0,  0,  0,  0,  0,  0]
+            return BlackScore-WhiteScore + r
                         
 pawn_position_bonus_END =  [ 0,  0,  0,  0,  0,  0,  0,  0,
                            150,150,150,150,150,150,150,150,
@@ -974,34 +953,16 @@ knight_position_bonus = [-30,  0,-10,  0,  0,-10,  0,-30,
                          -10,  0, 15,  0,  0, 15,  0,-10,
                          -30, 15, 15, 15, 15, 15, 15,-30,
                          -20, -5,  0,-10,-10,  0, -5,-20,
-                         -30,  0,-10,  0,  0,-10,  0,-30]
+                         -30,-20,-10,  0,  0,-10,-20,-30]
         
 bishop_position_bonus = [-20,-10,-10,-10,-10,-10,-10,-20,
                          -10,  0,  0,  0,  0,  0,  0,-10,
-                         -10,  0,  5, 10, 10,  5,  0,-10,
-                         -10, 10,  5, 10, 10,  5,  5,-10,
+                          10,  0, 15, 10, 10, 15,  0, 10,
+                         -10, 10,  5, 10, 10,  5, 10,-10,
                          -10,  0, 10, 10, 10, 10,  0,-10,
-                         -10, 10, 10,  0, -5, 10, 10,-10,
+                          10, 10, 10,  0, -5, 10, 10, 10,
                          -10, 10,  0,-10,-10,  0, 15,-10,
                          -20,-10,-10,-10,-10,-10,-10,-30]
-        
-rook_position_bonus =  [ 5,  0,  0,  0,  0,  0,  0,  5,
-                         5, 10, 10, 30, 30, 10, 10,  5,
-                        -5,  0,  0,  0,  0,  0,  0, -5,
-                         5, 10, 10, 10, 10, 10, 10,  5,
-                         5, 10, 10, 10, 10, 10, 10,  5,
-                        -5,  0,  0,  0,  0,  0,  0, -5,
-                         5, 10, 10, 10, 10, 10, 10,  5,
-                         0,  0, 10, 20, 20, 10,  0,  0]
-                         
-queen_position_bonus =  [-10,-10,-10, -5, -5,-10,-10,-10,
-                         -10,  0,  5,  0,  0,  5,  0,-10,
-                         -10,  5,  5,  5,  5,  5,  0,-10,
-                          -5,  0,  5,  5,  5,  5,  0, -5,
-                           0,  0,  5,  5,  5,  5,  0,  0,
-                         -10,  5,  5,  5,  5,  5,  5,-10,
-                         -10,  0,  5,  0,  0,  5,  0,-10,
-                         -10,-10,-10,  5, -5,-10,-10,-10]
                          
 king_position_bonus =  [-30,-40,-40,-50,-50,-40,-40,-30,
                         -30,-20,-10, 20, 20,-10,-20,-30,
@@ -1009,8 +970,8 @@ king_position_bonus =  [-30,-40,-40,-50,-50,-40,-40,-30,
                         -30,-10, 30, 30, 30, 30,-10,-30,
                         -30,-10, 30, 30, 30, 30,-10,-30,
                         -30,-10, 20, 30, 30, 20,-10,-30,
-                        -30,-30,-20,-20,-50,-20,  0,-30,
-                        -50, 30, 30,-30, 20,-30, 30,-50]
+                        -30,-30,-20,-50,-50,-50, 20,-30,
+                        -50, 30, 50,-30,  0,-30, 50,-50]
                         
 king_position_bonus_END =  [-30,-40,-40,-50,-50,-40,-40,-30,
                             -30,-20,-10, 20, 20,-10,-20,-30,

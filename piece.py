@@ -1,16 +1,17 @@
-#Pychess piece.py
-
 class Piece:
+    
+    "Chess set class"
     
     VIDE='.' # empty piece name (=empty square '.' in console)
 
     # Name of the pieces
-    nomPiece=(VIDE,'ROI','DAME','TOUR','FOU','CAVALIER','PION')
+    nomPiece=(VIDE,'ROI','DAME','TOUR','CAVALIER','FOU','PION')
         
-    # Give a score value for each piece : KING=100, QUEEN=9, ROOK=5...
-    valeurPiece=(0,100,9,5,3.1,3.1,1)
+    # Give a score value for each piece : KING=0, QUEEN=9, ROOK=5...
+    valeurPiece=(0,0,9,5,3,3,1)
     
-    # For the pieces moves, using method "mail box"
+    # For the pieces moves, using method "mail box" from Robert Hyatt
+    # It helps to know if a piece is not moved outside the board !
     tab120 = (
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
