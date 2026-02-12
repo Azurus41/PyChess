@@ -3,4 +3,6 @@
 
 # Some things about Pychess:
 # Speed : 5000-7000 nodes / s
+
 # Favorites openings : Openingbook.txt
+# To open it, simply click main.py
